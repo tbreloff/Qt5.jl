@@ -1,4 +1,4 @@
-using Cxx
+
 
 # @osx_only begin
 #     const qtlibdir = "/Users/kfischer/Projects/qt-everywhere-opensource-src-5.3.1/qtbase/~/usr/lib/"
@@ -17,6 +17,8 @@ using Cxx
 #     addHeaderDir(joinpath(QtWidgets,"Headers"), kind = C_System)
 # end
 
+using Cxx
+
 @linux_only begin
     const qtincdir = "/usr/include/qt5"
     const qtlibdir = "/usr/lib64"
@@ -32,36 +34,50 @@ using Cxx
     Libdl.dlopen(joinpath(qtlibdir,"libQt5Widgets.so"), Libdl.RTLD_GLOBAL)
 end
 
-cxx" #include <QtCore> "
-cxx" #include <QApplication> "
+cxx"""
+    #include <QtCore>
+    #include <QApplication>
+    #include <QMessageBox>
+    #include <QPushButton>
+"""
 
-# cxxinclude("QApplication", isAngled=true)
-# cxxinclude("QMessageBox", isAngled=true)
-# cxxinclude("QPushButton", isAngled=true)
+# # init the QApplication object
+# function initApp()
+#     # notes: This is pretty stupid, but it seems QApplication is capturing the pointer
+#     # to the reference, so we can't just # stack allocate it because that won't
+#     # be valid for exec
+#     ac = [Int32(1)]
+#     global const a = "julia"
+#     x = Ptr{UInt8}[pointer(a),C_NULL]
+#     app = @cxxnew QApplication(*(pointer(ac)),pointer(x))
+# end
+# const app = initApp()
 
+
+const ac = [Int32(1)]
 const a = "julia"
 x = Ptr{UInt8}[pointer(a),C_NULL]
-# This is pretty stupid, but it seems QApplication is capturing the pointer
-# to the reference, so we can't just # stack allocate it because that won't
-# be valid for exec
-ac = [Int32(1)]
+const app = @cxxnew QApplication(*(pointer(ac)),pointer(x))
 
-app = @cxx QApplication(*(pointer(ac)),pointer(x))
+
+# this will be called from the julia main loop
+function update_loop(_timer)
+    icxx"""
+        $app->processEvents();
+    """
+end
+
+function startEventLoop()
+    # kick off the gui loop callbacks
+    Base.Timer( update_loop, 0.1, 0.005 )
+end
+
 
 # BUG: this version doesn't work - unresponsive gui
 #update_loop(_timer) = @cxx app.processEvents() # default QEventFlags::AllEvents
 
-# create messagebox
-mb = @cxxnew QMessageBox(@cxx(QMessageBox::Information),
-                      pointer("Hello World"),
-                      pointer("This is a QMessageBox"))
 
-# add buttons
-@cxx mb->addButton(@cxx(QMessageBox::Ok))
-
-hibtn = @cxxnew QPushButton(pointer("Say Hi!"))
-@cxx mb->addButton(hibtn, @cxx(QMessageBox::ApplyRole))
-
+# add silly test
 say_hi() = println("Hi!")::Void
 cxx"""
 #include <iostream>
@@ -71,31 +87,41 @@ void handle_hi()
 }
 """
 
+
+function createMessageBox()
+    # create messagebox
+    mb = @cxxnew QMessageBox(@cxx(QMessageBox::Information),
+                          pointer("Hello World"),
+                          pointer("This is a QMessageBox"))
+
+    # add buttons
+    @cxx mb->addButton(@cxx(QMessageBox::Ok))
+
+    hibtn = @cxxnew QPushButton(pointer("Say Hi!"))
+    @cxx mb->addButton(hibtn, @cxx(QMessageBox::ActionRole))
+
+    setup(hibtn)
+
+    # display the window
+    @cxx mb->setWindowModality(@cxx(Qt::NonModal))
+    @cxx mb->show()
+
+    mb
+end
+
 # BUGS?
 # - type translation doesn't work right for $:(btn) if I call connect from a cxx""" block
 # - I get isexprs assertion failure if I try to use a lambda. think it might be a
 #   block parsing issue though.
 function setup(btn)
     icxx"""
-        QObject::connect($btn, &QPushButton::clicked,
-            handle_hi );
+        QObject::connect($btn, &QPushButton::clicked, handle_hi );
     """
 end
-setup(hibtn)
+# setup(hibtn)
 
-# display the window
-@cxx mb->setWindowModality(@cxx(Qt::NonModal))
-@cxx mb->show()
 
-# start event loop integration
-function update_loop(_timer)
-    icxx"""
-        $app.processEvents();
-    """
-end
 
-timer = Base.Timer( update_loop )
-Base.start_timer(timer, .1, .005)
 
 # exit if not interactive shell
 !isinteractive() && stop_timer(timer)
