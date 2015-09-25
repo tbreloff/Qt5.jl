@@ -20,9 +20,11 @@ using Cxx
 @linux_only begin
     const qtincdir = "/usr/include/qt5"
     const qtlibdir = "/usr/lib64"
+    const QtCore = joinpath(qtincdir, "QtCore/")
     const QtWidgets = joinpath(qtincdir, "QtWidgets/")
 
     addHeaderDir(qtincdir, kind = C_System)
+    addHeaderDir(QtCore, kind = C_System)
     addHeaderDir(QtWidgets, kind = C_System)
 
     Libdl.dlopen(joinpath(qtlibdir,"libQt5Core.so"), Libdl.RTLD_GLOBAL)
@@ -30,9 +32,12 @@ using Cxx
     Libdl.dlopen(joinpath(qtlibdir,"libQt5Widgets.so"), Libdl.RTLD_GLOBAL)
 end
 
-cxxinclude("QApplication", isAngled=true)
-cxxinclude("QMessageBox", isAngled=true)
-cxxinclude("QPushButton", isAngled=true)
+cxx" #include <QtCore> "
+cxx" #include <QApplication> "
+
+# cxxinclude("QApplication", isAngled=true)
+# cxxinclude("QMessageBox", isAngled=true)
+# cxxinclude("QPushButton", isAngled=true)
 
 const a = "julia"
 x = Ptr{UInt8}[pointer(a),C_NULL]
