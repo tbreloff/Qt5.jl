@@ -1,4 +1,4 @@
-
+__precompile__(false)
 
 # @osx_only begin
 #     const qtlibdir = "/Users/kfischer/Projects/qt-everywhere-opensource-src-5.3.1/qtbase/~/usr/lib/"
