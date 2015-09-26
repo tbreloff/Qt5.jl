@@ -41,6 +41,8 @@ abstract Shape <: SceneItem
 type Scene
   canvas
   items::Vector{SceneItem}
+  xy::P2
+  wh::P2
 end
 
 const _scenes = Dict{Int, Scene}()
@@ -53,13 +55,16 @@ function draw(canvas::Cxx.CppPtr)
 
   # get the index of the canvas
   idx = @cxx canvas->getidx()
+  @show idx
 
   # get the starting coordinates
   x = @cxx canvas->x()
   y = @cxx canvas->y()
   width = @cxx canvas->width()
   height = @cxx canvas->height()
-  box = SceneBox(Nullable(SceneBox), P2(x,y), P2(width,height))
+  @show x y width height
+  box = SceneBox(Nullable{SceneBox}(), P2(x,y), P2(width,height))
+  @show box
 
   # grab the scene object
   scene = _scenes[idx]
@@ -114,18 +119,23 @@ immutable SceneBox
   wh::P2
 end
 
+# TODO: a better composition... maybe pass scene w/h through directly?
+# TODO: can we structure so that we don't need a parent reference, and the top level converts pct to scene?
+#     note: we can probably pull this off if we stay as percentages... if item is 50% of box, and box is 30% of it's
+#           parent, then we can just return 15% of the box pct
+
 "given values where x/y/w/h are on the scale 0->1, convert to box coords"
-function convertPctToBoxCoords(box::SceneBox, xy::P2, wh::P2)
+function convertPctToBoxScale(box::SceneBox, xy::P2, wh::P2)
   xy .* box.wh, wh .* box.wh
 end
 
 "given values where x/y/w/h are on the scale 0->1, convert to scene coords"
 function convertPctToSceneCoords(box::SceneBox, xy::P2, wh::P2)
-  xy, wh = convertPctToBoxCoords(box, xy, wh)
+  xy, wh = convertPctToBoxScale(box, xy, wh)
   if isnull(box.parent)
     return xy, wh
   else
-    return convertPctToBoxCoords(box.parent, xy, wh)
+    return convertPctToBoxCoords(get(box.parent), xy, wh)
   end
 end
 
@@ -154,7 +164,7 @@ type Ellipse <: Shape
 end
 
 function draw(item::Ellipse, painter, box::SceneBox)
-  xy, wh = convertPctToSceneCoords(center, radius)
+  xy, wh = convertPctToSceneCoords(box, center, radius)
   @cxx painter->setPen(item.pen)
   @cxx painter->setBrush(item.brush)
   @cxx painter->drawEllipse(xy.x, xy.y, wh.w, wh.h)
