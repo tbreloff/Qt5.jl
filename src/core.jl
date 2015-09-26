@@ -40,9 +40,14 @@ cxx"""
   #include <QApplication>
   #include <QMessageBox>
   #include <QPushButton>
-  #include <QMainWindow>
-  #include <QWindow>
-  #include <QRasterWindow>
+  // #include <QMainWindow>
+  // #include <QWindow>
+  // #include <QRasterWindow>
+  #include <QBrush>
+  #include <QPen>
+  #include <QPixmap>
+  #include <QWidget>
+  #include <QPainter>
 """
 
 type QApplication
