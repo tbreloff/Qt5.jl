@@ -39,7 +39,7 @@ cxx"""
       void paintEvent(QPaintEvent *event)  
       {
         std::cout << "PAINT! " << std::endl;
-        $:(paint( icxx"return this;" )::Void);
+        $:(draw( icxx"return this;" )::Void);
       }
 
   private:

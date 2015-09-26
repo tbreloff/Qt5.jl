@@ -1,16 +1,54 @@
 
+
+cxx"""
+  class MyCanvas : public QWidget
+  {
+
+  public:
+    // enum Shape { Line, Points, Polyline, Polygon, Rect, RoundedRect, Ellipse, Arc,
+    //              Chord, Pie, Path, Text, Pixmap };
+
+    MyCanvas(int idx) : _idx(idx) {}
+    int getidx() { return _idx; }
+
+  protected:
+    // just call the julia method `draw` and pass the MyCanvas pointer
+    void paintEvent(QPaintEvent *event)  
+    {
+      std::cout << "PAINT! " << std::endl;
+      $:(draw( icxx"return this;" )::Void);
+    }
+
+  private:
+    int _idx;
+  };
+"""
+
 # ----------------------------------------------------
 
-abstract Layer
+"anything with coords in a scene"
+abstract SceneItem
+
+"layers are containers in a scene... nothing to draw directly"
+abstract Layer <: SceneItem
+
+"these are things that need to be drawn"
+abstract Shape <: SceneItem
+
+# ----------------------------------------------------
+
 
 type Scene
   canvas
-  layers::Vector{Layer}
+  items::Vector{SceneItem}
 end
 
 const _scenes = Dict{Int, Scene}()
 
-function paint(canvas)
+
+# NOTE: this is the callback that gets called from within MyCanvas::paintEvent
+#       ALL drawing should be done before returning
+function draw(canvas::CppPtr)
   dump(canvas)
 
   # get the index of the canvas
@@ -25,6 +63,8 @@ function paint(canvas)
   @cxx painter->setRenderHint(@cxx(QPainter::Antialiasing), true)
 
   # draw something
+  for 
+
   p = Pen("blue")
   @cxx painter->setPen(p)
   @cxx painter->drawEllipse(50.0, 50.0, 50.0, 20.0)
@@ -66,15 +106,22 @@ type ViewLayer <: Layer
   items::Vector{SceneItem}
 end
 
+function draw(layer::ViewLayer)
+  for item in items
+    draw(item, coords)
+  end
+end
+
 # ----------------------------------------------------
 
-abstract SceneItem
 
-type Circle <: SceneItem
+type Circle <: Shape
   centerx::Float64
   centery::Float64
   radius::Float64
 end
+
+function 
 
 # ----------------------------------------------------
 
