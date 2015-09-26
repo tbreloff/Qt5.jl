@@ -48,11 +48,18 @@ const _scenes = Dict{Int, Scene}()
 
 # NOTE: this is the callback that gets called from within MyCanvas::paintEvent
 #       ALL drawing should be done before returning
-function draw(canvas::CppPtr)
+function draw(canvas::Cxx.CppPtr)
   dump(canvas)
 
   # get the index of the canvas
   idx = @cxx canvas->getidx()
+
+  # get the starting coordinates
+  x = @cxx canvas->x()
+  y = @cxx canvas->y()
+  width = @cxx canvas->width()
+  height = @cxx canvas->height()
+  box = SceneBox(Nullable(SceneBox), P2(x,y), P2(width,height))
 
   # grab the scene object
   scene = _scenes[idx]
@@ -63,11 +70,13 @@ function draw(canvas::CppPtr)
   @cxx painter->setRenderHint(@cxx(QPainter::Antialiasing), true)
 
   # draw something
-  for 
+  for item in scene.items
+    draw(item, painter, box)
+  end
 
-  p = Pen("blue")
-  @cxx painter->setPen(p)
-  @cxx painter->drawEllipse(50.0, 50.0, 50.0, 20.0)
+  # p = Pen("blue")
+  # @cxx painter->setPen(p)
+  # @cxx painter->drawEllipse(50.0, 50.0, 50.0, 20.0)
 
   nothing
 end
@@ -92,36 +101,66 @@ end
 
 # ----------------------------------------------------
 
-"This is the window (in pixels relative to the canvas) for drawing"
-immutable ParentCoords
-  x::Float64
-  y::Float64
-  w::Float64
-  h::Float64
+
+
+# ----------------------------------------------------
+
+# note: null parent means it's top level
+
+"This is the box which contains shapes... all child shapes are relative to this box"
+immutable SceneBox
+  parent::Nullable{SceneBox}
+  xy::P2
+  wh::P2
 end
+
+"given values where x/y/w/h are on the scale 0->1, convert to box coords"
+function convertPctToBoxCoords(box::SceneBox, xy::P2, wh::P2)
+  xy .* box.wh, wh .* box.wh
+end
+
+"given values where x/y/w/h are on the scale 0->1, convert to scene coords"
+function convertPctToSceneCoords(box::SceneBox, xy::P2, wh::P2)
+  xy, wh = convertPctToBoxCoords(box, xy, wh)
+  if isnull(box.parent)
+    return xy, wh
+  else
+    return convertPctToBoxCoords(box.parent, xy, wh)
+  end
+end
+
+# ----------------------------------------------------
 
 "holds a list of child scene items and the coordinates"
 type ViewLayer <: Layer
-  coords::ParentCoords
+  box::SceneBox
   items::Vector{SceneItem}
 end
 
-function draw(layer::ViewLayer)
+function draw(layer::ViewLayer, painter, box::SceneBox)
   for item in items
-    draw(item, coords)
+    draw(item, painter, layer.box)
   end
 end
 
 # ----------------------------------------------------
 
 
-type Circle <: Shape
-  centerx::Float64
-  centery::Float64
-  radius::Float64
+type Ellipse <: Shape
+  center::P2
+  radius::P2
+  pen
+  brush
 end
 
-function 
+function draw(item::Ellipse, painter, box::SceneBox)
+  xy, wh = convertPctToSceneCoords(center, radius)
+  @cxx painter->setPen(item.pen)
+  @cxx painter->setBrush(item.brush)
+  @cxx painter->drawEllipse(xy.x, xy.y, wh.w, wh.h)
+end
+
+push!(scene::Union{Scene,Layer}, item::Ellipse) = push!(scene.items, item)
 
 # ----------------------------------------------------
 
