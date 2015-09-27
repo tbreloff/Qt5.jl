@@ -110,6 +110,35 @@ end
 
 # ----------------------------------------------------
 
+@enum MetricType PercentMetric PixelMetric
+
+immutable Metric{M}
+  val::Float64
+end
+
+typealias Px Metric{PixelMetric}
+typealias Pct Metric{PercentMetric}
+
+"This allows combination of percent and pixel metrics"
+immutable Distance
+  pct::Float64
+  px::Float64
+end
+
+convert(::Type{Distance}, pct::Pct) = Distance(pct, 0.0)
+convert(::Type{Distance}, px::Px) = Distance(0.0, px)
+
+"defines a view inside the widget area"
+immutable ViewBox
+  x::Px
+  y::Px
+  w::Px
+  h::Px
+end
+
+
+# ---------------------------------------------------
+
 # note: null parent means it's top level
 
 "This is the box which contains shapes... all child shapes are relative to this box"
