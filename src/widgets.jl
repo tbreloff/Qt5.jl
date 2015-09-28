@@ -102,7 +102,7 @@ function Base.display(scene::Scene)
 end
 
 
-Base.push!(scene::Scene, item::Shape) = push!(scene.items, item)
+Base.push!(scene::Scene, item::SceneItem) = push!(scene.items, item)
 
 # ----------------------------------------------------
 
@@ -147,6 +147,8 @@ for op in (:+, :-, :*, :/)
   @eval $op(d1::Distance, d2::Distance) = Distance($op(d1.pct, d2.pct), $op(d1.px, d2.px))
 end
 
+typealias DistOrDists Union{Distance, Vector{Distance}}
+
 # ---------------------------------------------------
 
 "defines a view inside the widget area... all values in pixels"
@@ -172,7 +174,7 @@ type View <: SceneItem
 end
 
 function draw(view::View, painter, box::ViewBox)
-  for item in items
+  for item in view.items
     draw(item, painter, view.box)
   end
 end
@@ -181,13 +183,31 @@ Base.push!(v::View, item::Shape) = push!(v.items, item)
 
 # ---------------------------------------------------
 
+immutable Pen{T<:Cxx.CppValue}
+  o::T
+end
+
+function Pen(cstr::ASCIIString)
+  Pen(@cxx QPen(pointer(cstr)))
+end
+
+immutable Brush{T<:Cxx.CppValue}
+  o::T
+end
+
+function Brush(cstr::ASCIIString)
+  Brush(@cxx QBrush(pointer(cstr)))
+end
+
+# ---------------------------------------------------
+
 type Ellipse <: Shape
   x::Distance
   y::Distance
   w::Distance
   h::Distance
-  pen
-  brush
+  pen::Pen
+  brush::Brush
 end
 
 function draw(item::Ellipse, painter, box::ViewBox)
@@ -196,11 +216,62 @@ function draw(item::Ellipse, painter, box::ViewBox)
   y = px_y(item.y, box)
   w = px_w(item.w, box)
   h = px_h(item.h, box)
-  @cxx painter->setPen(item.pen)
-  @cxx painter->setBrush(item.brush)
+  @cxx painter->setPen(item.pen.o)
+  @cxx painter->setBrush(item.brush.o)
   @cxx painter->drawEllipse(x-0.5*w, y-0.5*h, w, h)
 end
 
+type Ellipses <: Shape
+  n::Int
+  x::Vector{Distance}
+  y::Vector{Distance}
+  w::Vector{Distance}
+  h::Vector{Distance}
+  pen::Vector{Pen}
+  brush::Vector{Brush}
+end
+
+
+function draw(item::Ellipses, painter, box::ViewBox)
+  nx = length(item.x)
+  ny = length(item.y)
+  nw = length(item.w)
+  nh = length(item.h)
+  np = length(item.pen)
+  nb = length(item.brush)
+  x = 0.0
+  y = 0.0
+  w = 0.0
+  h = 0.0
+  x = nx == 1 ? px_x(item.x[1], box) : 0.0
+  y = ny == 1 ? px_y(item.y[1], box) : 0.0
+  w = nw == 1 ? px_w(item.w[1], box) : 0.0
+  h = nh == 1 ? px_h(item.h[1], box) : 0.0
+  np == 1 && @cxx painter->setPen(item.pen[1].o)
+  nb == 1 && @cxx painter->setBrush(item.brush[1].o)
+  
+  for i in 1:n
+    if nx > 1
+      x = px_x(item.x[mod1(i,nx)], box)
+    end
+    if ny > 1
+      y = px_y(item.y[mod1(i,ny)], box)
+    end
+    if nw > 1
+      w = px_w(item.w[mod1(i,nw)], box)
+    end
+    if nh > 1
+      h = px_h(item.h[mod1(i,nh)], box)
+    end
+    if np > 1
+      @cxx painter->setPen(item.pen[mod1(i,np)].o)
+    end
+    if nb > 1
+      @cxx painter->setBrush(item.brush[mod1(i,nb)].o)
+    end
+    @cxx painter->drawEllipse(x-0.5*w, y-0.5*h, w, h)
+  end
+end
 
 # ---------------------------------------------------
 
@@ -290,10 +361,10 @@ end
 
 # ----------------------------------------------------
 
-function render(painter)
-  dump(painter)
-  nothing
-end
+# function render(painter)
+#   dump(painter)
+#   nothing
+# end
 
 # ----------------------------------------------------
 
