@@ -41,9 +41,9 @@ abstract Shape <: SceneItem
 type Scene
   canvas
   items::Vector{SceneItem}
-  xy::P2
-  wh::P2
 end
+
+Scene(canvas::Cxx.CppPtr) = Scene(canvas, SceneItem[])
 
 const _scenes = Dict{Int, Scene}()
 
@@ -58,12 +58,13 @@ function draw(canvas::Cxx.CppPtr)
   @show idx
 
   # get the starting coordinates
-  x = @cxx canvas->x()
-  y = @cxx canvas->y()
+  # x = @cxx canvas->x()
+  # y = @cxx canvas->y()
   width = @cxx canvas->width()
   height = @cxx canvas->height()
-  @show x y width height
-  box = SceneBox(Nullable{SceneBox}(), P2(x,y), P2(width,height))
+  # @show x y width height
+  # box = SceneBox(Nullable{SceneBox}(), P2(x,y), P2(width,height))
+  box = ViewBox(0, 0, width, height)
   @show box
 
   # grab the scene object
@@ -79,10 +80,6 @@ function draw(canvas::Cxx.CppPtr)
     draw(item, painter, box)
   end
 
-  # p = Pen("blue")
-  # @cxx painter->setPen(p)
-  # @cxx painter->drawEllipse(50.0, 50.0, 50.0, 20.0)
-
   nothing
 end
 
@@ -95,7 +92,7 @@ function Scene()
   @cxx canvas->setWindowTitle(pointer("idx: $idx"))
 
   # create, store, and return the Scene object
-  scene = Scene(canvas, Layer[])
+  scene = Scene(canvas)
   _scenes[idx] = scene
 end
 
@@ -103,6 +100,9 @@ function Base.display(scene::Scene)
   @cxx scene.canvas->update()
   @cxx scene.canvas->show()
 end
+
+
+Base.push!(scene::Scene, item::Shape) = push!(scene.items, item)
 
 # ----------------------------------------------------
 
@@ -119,21 +119,42 @@ end
 typealias Px Metric{PixelMetric}
 typealias Pct Metric{PercentMetric}
 
+Base.convert(::Type{Px}, x::Real) = Px(float(x))
+Base.convert(::Type{Pct}, x::Real) = Pct(float(x))
+Base.promote_rule{T<:Real}(::Type{Px}, ::Type{T}) = Px
+Base.promote_rule{T<:Real}(::Type{Pct}, ::Type{T}) = Pct
+
+Base.show(io::IO, p::Px) = print(io, "Pixel{", p.val, "}")
+Base.show(io::IO, p::Pct) = print(io, "Percent{", p.val, "}")
+
+for op in (:+, :-, :*, :/)
+  @eval $op(p1::Px, p2::Px) = Px($op(p1.val, p2.val))
+  @eval $op(p1::Pct, p2::Pct) = Px($op(p1.val, p2.val))
+end
+
 "This allows combination of percent and pixel metrics"
 immutable Distance
   pct::Float64
   px::Float64
 end
 
-convert(::Type{Distance}, pct::Pct) = Distance(pct, 0.0)
-convert(::Type{Distance}, px::Px) = Distance(0.0, px)
+Base.convert(::Type{Distance}, pct::Pct) = Distance(pct.val, 0.0)
+Base.convert(::Type{Distance}, px::Px) = Distance(0.0, px.val)
+Base.convert(::Type{Distance}, x::Real) = Distance(float(x), 0.0)
+Base.promote_rule{T<:Union{Pct,Px,Real}}(::Type{Distance}, ::Type{T}) = Distance
 
-"defines a view inside the widget area"
+for op in (:+, :-, :*, :/)
+  @eval $op(d1::Distance, d2::Distance) = Distance($op(d1.pct, d2.pct), $op(d1.px, d2.px))
+end
+
+# ---------------------------------------------------
+
+"defines a view inside the widget area... all values in pixels"
 immutable ViewBox
-  x::Px
-  y::Px
-  w::Px
-  h::Px
+  x::Float64
+  y::Float64
+  w::Float64
+  h::Float64
 end
 
 px_x(dist::Distance, box::ViewBox) = box.x + (dist.pct * box.w + dist.px)
@@ -156,6 +177,8 @@ function draw(view::View, painter, box::ViewBox)
   end
 end
 
+Base.push!(v::View, item::Shape) = push!(v.items, item)
+
 # ---------------------------------------------------
 
 type Ellipse <: Shape
@@ -175,10 +198,9 @@ function draw(item::Ellipse, painter, box::ViewBox)
   h = px_h(item.h, box)
   @cxx painter->setPen(item.pen)
   @cxx painter->setBrush(item.brush)
-  @cxx painter->drawEllipse(x, y, w, h)
+  @cxx painter->drawEllipse(x-0.5*w, y-0.5*h, w, h)
 end
 
-push!(scene::Union{Scene,Layer}, item::Ellipse) = push!(scene.items, item)
 
 # ---------------------------------------------------
 
