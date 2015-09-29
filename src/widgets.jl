@@ -2,24 +2,16 @@
 
 cxx"""
   #include <QOpenGLWidget>
-  class MyCanvas : public QOpenGLWidget
+  class MyGLCanvas : public QOpenGLWidget
   {
 
   public:
-    // enum Shape { Line, Points, Polyline, Polygon, Rect, RoundedRect, Ellipse, Arc,
-    //              Chord, Pie, Path, Text, Pixmap };
+    // enum Shape {};
 
-    MyCanvas(int idx) : _idx(idx) {}
+    MyGLCanvas(int idx) : _idx(idx) {}
     int getidx() { return _idx; }
 
   protected:
-   // // just call the julia method `draw` and pass the MyCanvas pointer
-   // void paintEvent(QPaintEvent *event)  
-   // {
-    //  std::cout << "PAINT! " << std::endl;
-    //  $:(draw( icxx"return this;" )::Void);
-    //}
-
     void paintGL() {
       $:(draw( icxx"return this;" )::Void);
     }
@@ -27,6 +19,29 @@ cxx"""
   private:
     int _idx;
   };
+
+
+  class MyCanvas : public QWidget
+  {
+
+  public:
+    // enum Shape {};
+
+    MyCanvas(int idx) : _idx(idx) {}
+    int getidx() { return _idx; }
+
+  protected:
+    // just call the julia method `draw` and pass the MyCanvas pointer
+    void paintEvent(QPaintEvent *event)  
+    {
+      $:(draw( icxx"return this;" )::Void);
+    }
+
+
+  private:
+    int _idx;
+  };
+"""
 """
 
 # ----------------------------------------------------
