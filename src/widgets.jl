@@ -1,8 +1,8 @@
 
 
 cxx"""
-  #include <QGLWidget>
-  class MyCanvas : public QGLWidget
+  #include <QOpenGLWidget>
+  class MyCanvas : public QOpenGLWidget
   {
 
   public:
