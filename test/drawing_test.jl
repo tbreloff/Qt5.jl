@@ -26,7 +26,7 @@ function addcircles(scene)
   pen = q.Pen("black")
   brush = q.Brush("orange")
   vw = scene.items[1]
-  for i in 1:1000000
+  for i in 1:100000
      push!(vw, q.Ellipse(rand(),rand(),0.03,0.03,pen,brush))
   end
 end

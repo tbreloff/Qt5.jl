@@ -13,10 +13,14 @@ cxx"""
     int getidx() { return _idx; }
 
   protected:
-    // just call the julia method `draw` and pass the MyCanvas pointer
-    void paintEvent(QPaintEvent *event)  
-    {
-      std::cout << "PAINT! " << std::endl;
+   // // just call the julia method `draw` and pass the MyCanvas pointer
+   // void paintEvent(QPaintEvent *event)  
+   // {
+    //  std::cout << "PAINT! " << std::endl;
+    //  $:(draw( icxx"return this;" )::Void);
+    //}
+
+    void paintGL() {
       $:(draw( icxx"return this;" )::Void);
     }
 
