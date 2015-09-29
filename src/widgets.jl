@@ -1,7 +1,8 @@
 
 
 cxx"""
-  class MyCanvas : public QWidget
+  #include <QGLWidget>
+  class MyCanvas : public QGLWidget
   {
 
   public:
@@ -51,11 +52,11 @@ const _scenes = Dict{Int, Scene}()
 # NOTE: this is the callback that gets called from within MyCanvas::paintEvent
 #       ALL drawing should be done before returning
 function draw(canvas::Cxx.CppPtr)
-  dump(canvas)
+  # dump(canvas)
 
   # get the index of the canvas
   idx = @cxx canvas->getidx()
-  @show idx
+  # @show idx
 
   # get the starting coordinates
   # x = @cxx canvas->x()
@@ -65,15 +66,15 @@ function draw(canvas::Cxx.CppPtr)
   # @show x y width height
   # box = SceneBox(Nullable{SceneBox}(), P2(x,y), P2(width,height))
   box = ViewBox(0, 0, width, height)
-  @show box
+  # @show box
 
   # grab the scene object
   scene = _scenes[idx]
-  dump(scene)
+  # dump(scene)
 
   # set up the painter
-  painter = @cxxnew QPainter(canvas)
-  @cxx painter->setRenderHint(@cxx(QPainter::Antialiasing), true)
+  painter = Painter(@cxxnew QPainter(canvas))
+  @cxx (painter.o)->setRenderHint(@cxx(QPainter::Antialiasing), true)
 
   # draw something
   for item in scene.items
@@ -187,7 +188,7 @@ immutable Pen{T<:Cxx.CppValue}
   o::T
 end
 
-function Pen(cstr::ASCIIString)
+function Pen(cstr::AbstractString)
   Pen(@cxx QPen(pointer(cstr)))
 end
 
@@ -195,9 +196,32 @@ immutable Brush{T<:Cxx.CppValue}
   o::T
 end
 
-function Brush(cstr::ASCIIString)
+function Brush(cstr::AbstractString)
   Brush(@cxx QBrush(pointer(cstr)))
 end
+
+# ---------------------------------------------------
+
+type Painter{T<:Cxx.CppPtr}
+  o::T
+  pen::Nullable{Pen}
+  brush::Nullable{Brush}
+end
+
+Painter(o) = Painter(o, Nullable{Pen}(), Nullable{Brush}())
+
+function pen!(painter::Painter, pen::Pen)
+  !isnull(painter.pen) && get(painter.pen) === pen && return
+  painter.pen = Nullable(pen)
+  @cxx (painter.o)->setPen(pen.o)
+end
+function brush!(painter::Painter, brush::Brush)
+  !isnull(painter.brush) && get(painter.brush) === brush && return
+  painter.brush = Nullable(brush)
+  @cxx (painter.o)->setBrush(brush.o)
+end
+
+
 
 # ---------------------------------------------------
 
@@ -216,9 +240,9 @@ function draw(item::Ellipse, painter, box::ViewBox)
   y = px_y(item.y, box)
   w = px_w(item.w, box)
   h = px_h(item.h, box)
-  @cxx painter->setPen(item.pen.o)
-  @cxx painter->setBrush(item.brush.o)
-  @cxx painter->drawEllipse(x-0.5*w, y-0.5*h, w, h)
+  pen!(painter, item.pen)
+  brush!(painter, item.brush)
+  @cxx (painter.o)->drawEllipse(x-0.5*w, y-0.5*h, w, h)
 end
 
 type Ellipses <: Shape
@@ -349,13 +373,13 @@ end
 #   Canvas(w)
 # end
 
-function Pen(cstr::ASCIIString)
-  @cxx QPen(pointer(cstr))
-end
+# function Pen(cstr::ASCIIString)
+#   @cxx QPen(pointer(cstr))
+# end
 
-function Brush(cstr::ASCIIString)
-  @cxx QBrush(pointer(cstr))
-end
+# function Brush(cstr::ASCIIString)
+#   @cxx QBrush(pointer(cstr))
+# end
 
 # Base.display(c::Canvas) = @cxx (c.widget)->show()
 

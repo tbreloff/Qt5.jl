@@ -2,6 +2,7 @@ module Qt5
 
 __precompile__(false)
 
+import Base: +,-,*,/
 
 # using ImmutableArrays
 

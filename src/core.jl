@@ -65,7 +65,7 @@ function QApplication()
   global const app = QApplication(@cxxnew QApplication(*(pointer(ac)),pointer(x)))
 
   # quit on finalize  # TODO: make this work... not getting called
-  finalizer(app, quitapp)
+  # finalizer(app, quitapp)
 
   startEventLoop()
   app
