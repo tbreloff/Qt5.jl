@@ -1,49 +1,4 @@
 
-
-cxx"""
-  #include <QOpenGLWidget>
-  class MyGLCanvas : public QOpenGLWidget
-  {
-
-  public:
-    // enum Shape {};
-
-    MyGLCanvas(int idx) : _idx(idx) {}
-    int getidx() { return _idx; }
-
-  protected:
-    void paintGL() {
-      $:(draw( icxx"return this;" )::Void);
-    }
-
-  private:
-    int _idx;
-  };
-
-
-  class MyCanvas : public QWidget
-  {
-
-  public:
-    // enum Shape {};
-
-    MyCanvas(int idx) : _idx(idx) {}
-    int getidx() { return _idx; }
-
-  protected:
-    // just call the julia method `draw` and pass the MyCanvas pointer
-    void paintEvent(QPaintEvent *event)  
-    {
-      $:(draw( icxx"return this;" )::Void);
-    }
-
-
-  private:
-    int _idx;
-  };
-"""
-"""
-
 # ----------------------------------------------------
 
 "anything with coords in a scene"
@@ -84,7 +39,7 @@ function draw(canvas::Cxx.CppPtr)
   height = @cxx canvas->height()
   # @show x y width height
   # box = SceneBox(Nullable{SceneBox}(), P2(x,y), P2(width,height))
-  box = ViewBox(0, 0, width, height)
+  box = BoundingBox(0, 0, width, height)
   # @show box
 
   # grab the scene object
@@ -130,70 +85,70 @@ Base.push!(scene::Scene, item::SceneItem) = push!(scene.items, item)
 
 # ----------------------------------------------------
 
-@enum MetricType PercentMetric PixelMetric
+# @enum MetricType PercentMetric PixelMetric
 
-immutable Metric{M}
-  val::Float64
-end
+# immutable Metric{M}
+#   val::Float64
+# end
 
-typealias Px Metric{PixelMetric}
-typealias Pct Metric{PercentMetric}
+# typealias Px Metric{PixelMetric}
+# typealias Pct Metric{PercentMetric}
 
-Base.convert(::Type{Px}, x::Real) = Px(float(x))
-Base.convert(::Type{Pct}, x::Real) = Pct(float(x))
-Base.promote_rule{T<:Real}(::Type{Px}, ::Type{T}) = Px
-Base.promote_rule{T<:Real}(::Type{Pct}, ::Type{T}) = Pct
+# Base.convert(::Type{Px}, x::Real) = Px(float(x))
+# Base.convert(::Type{Pct}, x::Real) = Pct(float(x))
+# Base.promote_rule{T<:Real}(::Type{Px}, ::Type{T}) = Px
+# Base.promote_rule{T<:Real}(::Type{Pct}, ::Type{T}) = Pct
 
-Base.show(io::IO, p::Px) = print(io, "Pixel{", p.val, "}")
-Base.show(io::IO, p::Pct) = print(io, "Percent{", p.val, "}")
+# Base.show(io::IO, p::Px) = print(io, "Pixel{", p.val, "}")
+# Base.show(io::IO, p::Pct) = print(io, "Percent{", p.val, "}")
 
-for op in (:+, :-, :*, :/)
-  @eval $op(p1::Px, p2::Px) = Px($op(p1.val, p2.val))
-  @eval $op(p1::Pct, p2::Pct) = Px($op(p1.val, p2.val))
-end
+# for op in (:+, :-, :*, :/)
+#   @eval $op(p1::Px, p2::Px) = Px($op(p1.val, p2.val))
+#   @eval $op(p1::Pct, p2::Pct) = Px($op(p1.val, p2.val))
+# end
 
-"This allows combination of percent and pixel metrics"
-immutable Distance
-  pct::Float64
-  px::Float64
-end
+# "This allows combination of percent and pixel metrics"
+# immutable Distance
+#   pct::Float64
+#   px::Float64
+# end
 
-Base.convert(::Type{Distance}, pct::Pct) = Distance(pct.val, 0.0)
-Base.convert(::Type{Distance}, px::Px) = Distance(0.0, px.val)
-Base.convert(::Type{Distance}, x::Real) = Distance(float(x), 0.0)
-Base.promote_rule{T<:Union{Pct,Px,Real}}(::Type{Distance}, ::Type{T}) = Distance
+# Base.convert(::Type{Distance}, pct::Pct) = Distance(pct.val, 0.0)
+# Base.convert(::Type{Distance}, px::Px) = Distance(0.0, px.val)
+# Base.convert(::Type{Distance}, x::Real) = Distance(float(x), 0.0)
+# Base.promote_rule{T<:Union{Pct,Px,Real}}(::Type{Distance}, ::Type{T}) = Distance
 
-for op in (:+, :-, :*, :/)
-  @eval $op(d1::Distance, d2::Distance) = Distance($op(d1.pct, d2.pct), $op(d1.px, d2.px))
-end
+# for op in (:+, :-, :*, :/)
+#   @eval $op(d1::Distance, d2::Distance) = Distance($op(d1.pct, d2.pct), $op(d1.px, d2.px))
+# end
 
-typealias DistOrDists Union{Distance, Vector{Distance}}
+# typealias DistOrDists Union{Distance, Vector{Distance}}
 
 # ---------------------------------------------------
 
-"defines a view inside the widget area... all values in pixels"
-immutable ViewBox
-  x::Float64
-  y::Float64
-  w::Float64
-  h::Float64
-end
+# "defines a view inside the widget area... all values in pixels"
+# immutable ViewBox
+#   x::Float64
+#   y::Float64
+#   w::Float64
+#   h::Float64
+# end
 
-px_x(dist::Distance, box::ViewBox) = box.x + (dist.pct * box.w + dist.px)
-px_y(dist::Distance, box::ViewBox) = box.y + (dist.pct * box.h + dist.px)
-px_w(dist::Distance, box::ViewBox) = dist.pct * box.w + dist.px
-px_h(dist::Distance, box::ViewBox) = dist.pct * box.h + dist.px
+# px_x(dist::Distance, box::ViewBox) = box.x + (dist.pct * box.w + dist.px)
+# px_y(dist::Distance, box::ViewBox) = box.y + (dist.pct * box.h + dist.px)
+# px_w(dist::Distance, box::ViewBox) = dist.pct * box.w + dist.px
+# px_h(dist::Distance, box::ViewBox) = dist.pct * box.h + dist.px
 
 
 # ---------------------------------------------------
 
 "holds a list of child scene items and the coordinates"
 type View <: SceneItem
-  box::ViewBox
+  box::BoundingBox
   items::Vector{SceneItem}
 end
 
-function draw(view::View, painter, box::ViewBox)
+function draw(view::View, painter, box::BoundingBox)
   for item in view.items
     draw(item, painter, view.box)
   end
@@ -253,7 +208,7 @@ type Ellipse <: Shape
   brush::Brush
 end
 
-function draw(item::Ellipse, painter, box::ViewBox)
+function draw(item::Ellipse, painter, box::BoundingBox)
   # xy, wh = convertPctToSceneCoords(box, center, radius)
   x = px_x(item.x, box)
   y = px_y(item.y, box)
@@ -275,7 +230,7 @@ type Ellipses <: Shape
 end
 
 
-function draw(item::Ellipses, painter, box::ViewBox)
+function draw(item::Ellipses, painter, box::BoundingBox)
   nx = length(item.x)
   ny = length(item.y)
   nw = length(item.w)

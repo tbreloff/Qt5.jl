@@ -16,8 +16,9 @@ import Base: +,-,*,/
 # P3(p::P2, z::Real) = P3(p[1], p[2], z)
 # P3(p::P2) = P3(p, 0.0)
 
+include("measures.jl")
 include("core.jl")
-# include("cppdefs.jl")
+include("cppdefs.jl")
 include("widgets.jl")
 
 
